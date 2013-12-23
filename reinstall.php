@@ -18,23 +18,29 @@
  */
 
 use Drupal\Component\PhpStorage\PhpStorageFactory;
+use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Database\Database;
 
 define('MAINTENANCE_MODE', 'install');
 
 require_once __DIR__ . '/core/includes/bootstrap.inc';
+require_once __DIR__ . '/core/includes/cache.inc';
+require_once __DIR__ . '/core/includes/database.inc';
 
 // Find and prime the correct site directory like the installer.
 // The site directory may be empty.
 $site_path = conf_path(FALSE);
 
 try {
-  require_once DRUPAL_ROOT . '/core/includes/cache.inc';
   $settings['cache']['default'] = 'cache.backend.memory';
 
   $conf['lock_backend'] = 'Drupal\Core\Lock\NullLockBackend';
 
   drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
+
+  // Restore native PHP error/exception handlers.
+  restore_error_handler();
+  restore_exception_handler();
 
   // Purge PHP storage.
   // @see drupal_rebuild()
@@ -42,37 +48,40 @@ try {
   PhpStorageFactory::get('twig')->deleteAll();
 
   // Drop all tables.
-  $connection = Database::getConnection();
-  $tables = $connection->schema()->findTables('%');
-  foreach ($tables as $table) {
-    $connection->schema()->dropTable($table);
+  $info = Database::getConnectionInfo();
+  if ($info['default']['driver'] != 'sqlite') {
+    $connection = Database::getConnection();
+    $tables = $connection->schema()->findTables($info['default']['prefix']['default'] . '%');
+    foreach ($tables as $table) {
+      $connection->schema()->dropTable($table);
+    }
   }
   // Delete entire SQLite database file, if applicable.
-  if ($connection->driver() == 'sqlite' && !empty($GLOBALS['databases']['default']['default']['database'])) {
-    Drupal\Core\Database\Database::removeConnection('default');
-    $db = DRUPAL_ROOT . '/' . $GLOBALS['databases']['default']['default']['database'];
-    @chmod($db, 0777);
-    @unlink($db);
+  elseif (!empty($info['default']['database'])) {
+    Database::removeConnection('default');
+    $sqlite_db = DRUPAL_ROOT . '/' . $info['default']['database'];
+    if (file_exists($sqlite_db)) {
+      chmod($sqlite_db, 0777);
+      unlink($sqlite_db);
+    }
   }
 
   // Delete all (active) configuration.
   $dir = config_get_config_directory();
-  $files = glob($dir . '/*.' . Drupal\Core\Config\FileStorage::getFileExtension());
+  $files = glob($dir . '/*.' . FileStorage::getFileExtension());
   foreach ($files as $file) {
     unlink($file);
   }
 
   // Delete the entire sites directory, if requested.
-  if (!empty($_GET['delete'])) {
-    require_once DRUPAL_ROOT . '/core/includes/common.inc';
-    require_once DRUPAL_ROOT . '/core/includes/file.inc';
+  if (isset($_GET['delete'])) {
+    require_once __DIR__ . '/core/includes/common.inc';
+    require_once __DIR__ . '/core/includes/file.inc';
     // Ensure that we're not deleting the default site.
     $site_parts = explode('/', conf_path());
     if (!empty($site_parts[1]) && $site_parts[1] != 'default') {
       chmod(conf_path() . '/settings.php', 0777);
       unlink(conf_path() . '/settings.php');
-      @chmod(conf_path() . '/files/.ht.sqlite', 0777);
-      @unlink(conf_path() . '/files/.ht.sqlite');
       @unlink(conf_path() . '/files/.htaccess');
       file_unmanaged_delete_recursive(conf_path() . '/files');
     }
