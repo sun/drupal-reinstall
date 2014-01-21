@@ -20,16 +20,25 @@
 use Drupal\Component\PhpStorage\PhpStorageFactory;
 use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Database\Database;
+use Drupal\Core\Utility\Site;
 
 define('MAINTENANCE_MODE', 'install');
 
+require_once __DIR__ . '/core/vendor/autoload.php';
 require_once __DIR__ . '/core/includes/bootstrap.inc';
+
 require_once __DIR__ . '/core/includes/cache.inc';
 require_once __DIR__ . '/core/includes/database.inc';
 
 // Find and prime the correct site directory like the installer.
 // The site directory may be empty.
-$site_path = conf_path(FALSE);
+if (!function_exists('conf_path')) {
+  Site::initInstaller(__DIR__);
+  $site_path = Site::getPath();
+}
+else {
+  $site_path = conf_path(FALSE);
+}
 
 try {
   $settings['cache']['default'] = 'cache.backend.memory';
@@ -78,14 +87,13 @@ try {
     require_once __DIR__ . '/core/includes/common.inc';
     require_once __DIR__ . '/core/includes/file.inc';
     // Ensure that we're not deleting the default site.
-    $site_parts = explode('/', conf_path());
+    $site_parts = explode('/', $site_path);
     if (!empty($site_parts[1]) && $site_parts[1] != 'default') {
-      chmod(conf_path() . '/settings.php', 0777);
-      unlink(conf_path() . '/settings.php');
-      @unlink(conf_path() . '/files/.htaccess');
-      file_unmanaged_delete_recursive(conf_path() . '/files');
+      chmod($site_path . '/settings.php', 0777);
+      unlink($site_path . '/settings.php');
+      unlink($site_path . '/files/.htaccess');
+      file_unmanaged_delete_recursive($site_path . '/files');
     }
-    unset($_GET['delete']);
   }
 }
 catch (\Exception $e) {
