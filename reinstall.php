@@ -27,7 +27,6 @@ define('MAINTENANCE_MODE', 'install');
 require_once __DIR__ . '/core/vendor/autoload.php';
 require_once __DIR__ . '/core/includes/bootstrap.inc';
 
-require_once __DIR__ . '/core/includes/cache.inc';
 require_once __DIR__ . '/core/includes/database.inc';
 
 // Find and prime the correct site directory like the installer.
@@ -91,7 +90,10 @@ try {
     if (!empty($site_parts[1]) && $site_parts[1] != 'default') {
       chmod($site_path . '/settings.php', 0777);
       unlink($site_path . '/settings.php');
-      unlink($site_path . '/files/.htaccess');
+      if (file_exists($site_path . '/files/.htaccess')) {
+        chmod($site_path . '/files/.htaccess', 0777);
+        unlink($site_path . '/files/.htaccess');
+      }
       file_unmanaged_delete_recursive($site_path . '/files');
     }
   }
