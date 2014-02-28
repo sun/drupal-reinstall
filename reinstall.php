@@ -27,7 +27,6 @@ const MAINTENANCE_MODE = 'install';
 
 require_once __DIR__ . '/core/vendor/autoload.php';
 require_once __DIR__ . '/core/includes/bootstrap.inc';
-require_once __DIR__ . '/core/includes/database.inc';
 
 // Find and prime the correct site directory like the installer.
 // The site directory may be empty.
