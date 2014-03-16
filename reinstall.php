@@ -19,6 +19,7 @@
  */
 
 use Drupal\Component\PhpStorage\PhpStorageFactory;
+use Drupal\Component\Utility\Settings;
 use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Site\Site;
@@ -40,11 +41,23 @@ else {
 $settings['cache']['default'] = 'cache.backend.memory';
 $conf['lock_backend'] = 'Drupal\Core\Lock\NullLockBackend';
 
+// Prevent _drupal_bootstrap_configuration() from redirecting in case
+// settings.php contains no $databases yet.
+// @see drupal_installation_attempted()
+$install_state['dummy'] = 'no_redirect';
+
 drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
 
 // Restore native PHP error/exception handlers.
 restore_error_handler();
 restore_exception_handler();
+
+// Ensure required settings exist in case settings.php was not rewritten yet.
+if (!Settings::getSingleton()->get('hash_salt')) {
+  new Settings(array(
+    'hash_salt' => 'reinstall',
+  ));
+}
 
 if (!function_exists('conf_path')) {
   $site_path = Site::getPath();
@@ -61,31 +74,37 @@ PhpStorageFactory::get('twig')->deleteAll();
 
 // Drop all database tables.
 $info = Database::getConnectionInfo();
-if ($info['default']['driver'] != 'sqlite') {
-  $connection = Database::getConnection();
-  $tables = $connection->schema()->findTables($info['default']['prefix']['default'] . '%');
-  foreach ($tables as $table) {
-    $connection->schema()->dropTable($table);
+if (isset($info['default'])) {
+  if ($info['default']['driver'] != 'sqlite') {
+    $connection = Database::getConnection();
+    $tables = $connection->schema()->findTables($info['default']['prefix']['default'] . '%');
+    foreach ($tables as $table) {
+      $connection->schema()->dropTable($table);
+    }
   }
-}
-// Delete SQLite database file, if applicable.
-elseif (!empty($info['default']['database'])) {
-  Database::removeConnection('default');
-  $sqlite_db = DRUPAL_ROOT . '/' . $info['default']['database'];
-  if (file_exists($sqlite_db)) {
-    chmod($sqlite_db, 0777);
-    unlink($sqlite_db);
+  // Delete SQLite database file, if applicable.
+  elseif (!empty($info['default']['database'])) {
+    Database::removeConnection('default');
+    $sqlite_db = DRUPAL_ROOT . '/' . $info['default']['database'];
+    if (file_exists($sqlite_db)) {
+      chmod($sqlite_db, 0777);
+      unlink($sqlite_db);
+    }
   }
 }
 
 // Delete all (active) configuration.
 // glob() requires an absolute path on Windows.
 // realpath() returns FALSE if the directory does not exist.
-if ($dir = realpath(config_get_config_directory())) {
-  $files = glob($dir . '/*.' . FileStorage::getFileExtension());
-  foreach ($files as $file) {
-    unlink($file);
+try {
+  if ($dir = realpath(config_get_config_directory())) {
+    $files = glob($dir . '/*.' . FileStorage::getFileExtension());
+    foreach ($files as $file) {
+      unlink($file);
+    }
   }
+}
+catch (\Exception $e) {
 }
 
 // Delete settings.php and the files directory in the site directory, if requested.
