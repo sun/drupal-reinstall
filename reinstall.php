@@ -117,8 +117,10 @@ if (!empty($_GET['delete'])) {
     $settings_file = $site_path . '/settings.php';
     $files_dir = $site_path . '/files';
   }
-  chmod($settings_file, 0777);
-  unlink($settings_file);
+  if (file_exists($settings_file)) {
+    chmod($settings_file, 0777);
+    unlink($settings_file);
+  }
   if (is_dir($files_dir)) {
     // Does not need a filter, because we want to delete all contents.
     $flags = \FilesystemIterator::UNIX_PATHS;
