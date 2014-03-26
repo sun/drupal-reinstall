@@ -53,7 +53,7 @@ restore_error_handler();
 restore_exception_handler();
 
 // Ensure required settings exist in case settings.php was not rewritten yet.
-if (!Settings::getSingleton()->get('hash_salt')) {
+if (!Settings::getInstance()->get('hash_salt')) {
   new Settings(array(
     'hash_salt' => 'reinstall',
   ));
