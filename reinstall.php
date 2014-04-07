@@ -18,11 +18,13 @@
  * http://drupal8.test/reinstall.php?delete=1&langcode=en&profile=testing
  */
 
-use Drupal\Component\PhpStorage\PhpStorageFactory;
 use Drupal\Component\Utility\Settings;
 use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Database\Database;
+use Drupal\Core\DrupalKernel;
+use Drupal\Core\PhpStorage\PhpStorageFactory;
 use Drupal\Core\Site\Site;
+use Symfony\Component\HttpFoundation\Request;
 
 const MAINTENANCE_MODE = 'install';
 
@@ -46,7 +48,12 @@ $conf['lock_backend'] = 'Drupal\Core\Lock\NullLockBackend';
 // @see drupal_installation_attempted()
 $install_state['dummy'] = 'no_redirect';
 
-drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
+if (method_exists('Drupal\Core\DrupalKernel', 'bootConfiguration')) {
+  $kernel = DrupalKernel::bootConfiguration(Request::createFromGlobals());
+}
+else {
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);
+}
 
 // Restore native PHP error/exception handlers.
 restore_error_handler();
