@@ -18,11 +18,11 @@
  * http://drupal8.test/reinstall.php?delete=1&langcode=en&profile=testing
  */
 
-use Drupal\Component\Utility\Settings;
 use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Database\Database;
 use Drupal\Core\DrupalKernel;
 use Drupal\Core\PhpStorage\PhpStorageFactory;
+use Drupal\Core\Site\Settings;
 use Drupal\Core\Site\Site;
 use Symfony\Component\HttpFoundation\Request;
 
