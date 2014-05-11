@@ -4,19 +4,26 @@ PHP front-controller to destroy and re-install a Drupal (8) site.
 
 ## Usage
 
-Place this script into the document root of your Drupal site; i.e., `/reinstall.php`
+Place this script into the document root of your Drupal site; i.e.,
+`/reinstall.php`
 
 Request it in your browser to drop all Drupal database tables and delete all
 configuration, so you can re-install from scratch.
 
+Without additional parameters, `settings.php` is retained as-is, so you can
+re-install with your previously existing database connection info, etc.
+
 Optional GET query parameters:
 
 * `delete=1`  
-  Deletes `settings.php` and the files directory in the site directory (but not
-  the site directory itself).
+  Additionally deletes `settings.php` and the files directory.
 * `main=1`  
   Unlocks reinstallation of of the main/default site. By default, only a
   [multi-]site may be reinstalled/deleted.
+
+Regardless of parameters, the site directory itself (and `/sites/sites.php`) is
+never deleted.  This enables the Drupal installer to discover the same site
+directory again.
 
 You may pass additional query parameters like `langcode` and `profile`, which
 will be forwarded to `/install.php`; e.g.:  
