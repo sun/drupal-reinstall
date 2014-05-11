@@ -61,3 +61,64 @@ mklink /H reinstall.php C:\gitrepos\drupal-reinstall\reinstall.php
 :: yields:
 Created hard link for reinstall.php <<===>> C:\gitrepos\drupal-reinstall\reinstall.php
 ```
+
+## Multi-WUT?
+
+This script and manual refers to "multiple sites" in a couple of places.  This
+chapter explains what is meant by that and why it matters.
+
+Drupal core natively supports a _multi-site_ concept; see
+[`/sites/default/default.settings.php`](http://drupalcode.org/project/drupal.git/blob/HEAD:/sites/default/default.settings.php)
+
+Drupal's multi-site functionality is normally used when you have multiple
+domains pointing to the same host and identical code base. — But what if you
+don't have or want that?  Can you leverage it for quick throw-away _"scratch"_
+re-installations?
+
+Yes, you can.  Assuming the following:
+
+1. You have Drupal in `/var/www/drupal8/`
+1. You normally access it via http://drupal8.local/
+1. You want to access a separate _scratch_ site via http://drupal8.local/scratch/
+
+Here is how:
+
+1. Edit your Apache `httpd.conf` (or corresponding virtual host `*.conf` file)
+   to add an `Alias`:
+
+    ```apache
+    <VirtualHost *:80>
+      ServerName drupal8.local
+      ...
+      Alias /scratch /var/www/drupal8
+    </VirtualHost>
+    ```
+1. Restart Apache.
+1. Create an empty `/sites/scratch` directory.
+1. Copy `/sites/example.sites.php` into `/sites/sites.php`
+1. Add the following line to `/sites/sites.php`:
+
+   ```php
+   $sites['drupal8.local.scratch'] = 'scratch';
+   ```
+1. Visit http://drupal8.local/scratch/reinstall.php
+
+Known limitation:
+
+1. The Apache 2.4+ `mod_alias` module supplies a `$_SERVER['CONTEXT_PREFIX']`
+   variable to PHP, which is not consumed in any way by Drupal.
+1. `mod_alias` is only triggered when requesting a _file_ within the aliased
+   location. When only requesting a directory (e.g., `/scratch`), then the
+   request does **not** run against the alias.
+1. Due to the above, the _final_ redirect to `/scratch` after completing the
+   Drupal installation will end up in the default site. To access the newly
+   installed scratch site, you have to manually inject a "dirty" URL:
+
+    ```diff
+    -http://drupal8.local/scratch/user/1
+    +http://drupal8.local/scratch/index.php/user/1
+    ```
+
+The limitation does not apply to the `reinstall.php` script itself, nor to
+`install.php`, since both are interpreted as _files_ by Apache.
+
