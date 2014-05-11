@@ -122,3 +122,6 @@ Known limitation:
 The limitation does not apply to the `reinstall.php` script itself, nor to
 `install.php`, since both are interpreted as _files_ by Apache.
 
+_Tip: Use the SQLite database driver when installing your scratch site, so the
+entire site is contained in files in the `/sites/scratch` directory._
+
